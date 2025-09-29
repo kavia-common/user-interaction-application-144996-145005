@@ -369,14 +369,6 @@ function Row({ item, selected, onSelect, onEditFee, onOpenRefund }) {
             <div className="label-sm">Original</div>
             <div className="row-amt neutral">{currency(item.originalAmount)}</div>
           </div>
-          <div className="col">
-            <div className="label-sm">Amount</div>
-            <div className={`row-amt negative`}>{`-${currency(currentAmount)}`}</div>
-          </div>
-          <div className="col">
-            <div className="label-sm">Refunded</div>
-            <div className="row-amt positive">{currency(refundedSoFar)}</div>
-          </div>
         </div>
         <div className="row-actions" aria-hidden={!hover}>
           <TertiaryButton onClick={() => onEditFee(item)}>Edit Fees</TertiaryButton>
@@ -389,13 +381,14 @@ function Row({ item, selected, onSelect, onEditFee, onOpenRefund }) {
 
 // PUBLIC_INTERFACE
 export default function OrderItemBreakdown() {
-  /** Enhanced Order Item Breakdown page with editable fees, refunded column, and refund confirmation modal. */
+  /** Enhanced Order Item Breakdown page with editable fees, refunded column, refund confirmation modal, and Figma tab preview. */
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState({});
   const [modalItem, setModalItem] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [bulkBarVisible, setBulkBarVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState("recent");
 
   useEffect(() => {
     fetchOrderItemsMock().then((data) => setItems(data));
@@ -498,48 +491,98 @@ export default function OrderItemBreakdown() {
       </aside>
 
       <main className="main">
-        <div className="tabs">
-          <div className="tab active">Recent</div>
-          <div className="tab">Reports</div>
-          <div className="tab">Support</div>
+        <div className="tabs" role="tablist" aria-label="Sections">
+          {["Recent", "Reports", "Support", "Figma"].map((label) => {
+            const key = label.toLowerCase();
+            const isActive = activeTab === key;
+            return (
+              <div
+                key={key}
+                role="tab"
+                aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
+                className={`tab ${isActive ? "active" : ""}`}
+                onClick={() => setActiveTab(key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActiveTab(key);
+                  }
+                }}
+              >
+                {label}
+              </div>
+            );
+          })}
         </div>
 
-        <div className={`selection-bar ${bulkBarVisible ? "active" : ""}`} role="region" aria-live="polite">
-          <div className="sel-count">{selectedCount} selected</div>
-          <div className="spacer" />
-          <SecondaryButton onClick={bulkRefund}>Refund</SecondaryButton>
-          <SecondaryButton onClick={() => { /* could open bulk edit */ }}>Edit Fees</SecondaryButton>
-          <TertiaryButton onClick={clearSelection}>Clear</TertiaryButton>
-        </div>
+        {activeTab === "recent" && (
+          <>
+            <div className={`selection-bar ${bulkBarVisible ? "active" : ""}`} role="region" aria-live="polite">
+              <div className="sel-count">{selectedCount} selected</div>
+              <div className="spacer" />
+              <SecondaryButton onClick={bulkRefund}>Refund</SecondaryButton>
+              <SecondaryButton onClick={() => { /* could open bulk edit */ }}>Edit Fees</SecondaryButton>
+              <TertiaryButton onClick={clearSelection}>Clear</TertiaryButton>
+            </div>
 
-        <section className="list-card" role="list" aria-label="Itemized Charges">
-          {items.map((item) => (
-            <Row
-              key={item.id}
-              item={item}
-              selected={!!selectedIds[item.id]}
-              onSelect={onSelect}
-              onEditFee={onEditFeeInline}
-              onOpenRefund={openRefundModal}
-            />
-          ))}
-        </section>
+            <section className="list-card" role="list" aria-label="Itemized Charges">
+              {items.map((item) => (
+                <Row
+                  key={item.id}
+                  item={item}
+                  selected={!!selectedIds[item.id]}
+                  onSelect={onSelect}
+                  onEditFee={onEditFeeInline}
+                  onOpenRefund={openRefundModal}
+                />
+              ))}
+            </section>
 
-        <section className="fee-breakdown">
-          <div className="section-title">Fee Breakdown</div>
-          <div className="fee-row">
-            <div>Subtotal</div>
-            <div className="amount neutral">{currency(subtotal)}</div>
-          </div>
-          <div className="fee-row">
-            <div>Refunded</div>
-            <div className="amount positive">-{currency(totalRefunded)}</div>
-          </div>
-          <div className="fee-row total">
-            <div>Total</div>
-            <div className="amount success">{currency(totalOriginal - totalRefunded)}</div>
-          </div>
-        </section>
+            <section className="fee-breakdown">
+              <div className="section-title">Fee Breakdown</div>
+              <div className="fee-row">
+                <div>Subtotal</div>
+                <div className="amount neutral">{currency(subtotal)}</div>
+              </div>
+              <div className="fee-row">
+                <div>Refunded</div>
+                <div className="amount positive">-{currency(totalRefunded)}</div>
+              </div>
+              <div className="fee-row total">
+                <div>Total</div>
+                <div className="amount success">{currency(totalOriginal - totalRefunded)}</div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === "reports" && (
+          <section className="list-card" role="region" aria-label="Reports">
+            <div className="section-title">Reports</div>
+            <p className="helper">This section will provide analytics and exports. Coming soon.</p>
+          </section>
+        )}
+
+        {activeTab === "support" && (
+          <section className="list-card" role="region" aria-label="Support">
+            <div className="section-title">Support</div>
+            <p className="helper">Need help? Contact support or browse FAQs. Coming soon.</p>
+          </section>
+        )}
+
+        {activeTab === "figma" && (
+          <section className="list-card" role="region" aria-label="Figma design">
+            <div className="section-title">Figma: Our solution • skilltest</div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
+              <iframe
+                title="Figma skilltest preview"
+                src="/assets/figma_skilltest.html"
+                style={{ width: "100%", height: "70vh", border: "0", background: "#fff" }}
+              />
+            </div>
+          </section>
+        )}
       </main>
 
       <aside className="summary">
